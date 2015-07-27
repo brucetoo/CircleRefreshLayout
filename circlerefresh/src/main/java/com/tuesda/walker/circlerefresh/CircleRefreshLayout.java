@@ -29,7 +29,9 @@ public class CircleRefreshLayout extends FrameLayout {
     private int mHeaderCircleSmaller = 6;
 
 
+    //向下拉得高度 - 150dp
     private float mPullHeight;
+    //头部刷新区域高度  100dp
     private float mHeaderHeight;
     private View mChildView;
     private AnimationView mHeader;
@@ -87,12 +89,16 @@ public class CircleRefreshLayout extends FrameLayout {
         a.recycle();
     }
 
+    /**
+     * 添加顶部view ,初始高度为0
+     */
     private void addHeaderView() {
         mHeader = new AnimationView(getContext());
         LayoutParams params = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0);
         params.gravity = Gravity.TOP;
         mHeader.setLayoutParams(params);
 
+        //将 header 加到framelayout中
         addViewInternal(mHeader);
         mHeader.setAniBackColor(mHeaderBackColor);
         mHeader.setAniForeColor(mHeaderForeColor);
@@ -105,6 +111,7 @@ public class CircleRefreshLayout extends FrameLayout {
         if (mChildView == null) {
             return;
         }
+        //listview的高度变化 150 到 100
         mUpBackAnimator = ValueAnimator.ofFloat(mPullHeight, mHeaderHeight);
         mUpBackAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override

@@ -28,12 +28,12 @@ public class AnimationView extends View {
     private AnimatorStatus mAniStatus = AnimatorStatus.PULL_DOWN;
 
     enum AnimatorStatus {
-        PULL_DOWN,
-        DRAG_DOWN,
-        REL_DRAG,
+        PULL_DOWN, //下拉到上层view的最大高度
+        DRAG_DOWN, //达到最大高度时，继续向下拖拽
+        REL_DRAG, //释放退拽
         SPRING_UP, // rebound to up, the position is less than PULL_HEIGHT
         POP_BALL,
-        OUTER_CIR,
+        OUTER_CIR, //外部的圈
         REFRESHING,
         DONE,
         STOP;
@@ -90,11 +90,13 @@ public class AnimationView extends View {
         PULL_HEIGHT = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100, context.getResources().getDisplayMetrics());
         PULL_DELTA = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 50, context.getResources().getDisplayMetrics());
         mWidthOffset = 0.5f;
+        //背景区域
         mBackPaint = new Paint();
         mBackPaint.setAntiAlias(true);
         mBackPaint.setStyle(Paint.Style.FILL);
         mBackPaint.setColor(0xff8b90af);
 
+        //球相关
         mBallPaint = new Paint();
         mBallPaint.setAntiAlias(true);
         mBallPaint.setColor(0xffffffff);
@@ -118,6 +120,7 @@ public class AnimationView extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int height = MeasureSpec.getSize(heightMeasureSpec);
+        //下拉的最大距离 等于 topView的高度 和 允许下拉的高度  100 + 50(PULL_DELTA)
         if (height > PULL_DELTA + PULL_HEIGHT) {
             heightMeasureSpec = MeasureSpec.makeMeasureSpec(PULL_DELTA + PULL_HEIGHT, MeasureSpec.getMode(heightMeasureSpec));
         }
@@ -127,6 +130,7 @@ public class AnimationView extends View {
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
+        //主要是动态改变了view在父布局中的大小，根据大小来判断当前的刷新的模式
         if (changed) {
             mRadius = getHeight() / 6;
             mWidth = getWidth();
@@ -151,9 +155,13 @@ public class AnimationView extends View {
     }
 
     @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-
         switch (mAniStatus) {
             case PULL_DOWN:
                 canvas.drawRect(0, 0, mWidth, mHeight, mBackPaint);
@@ -203,11 +211,18 @@ public class AnimationView extends View {
 
     }
 
+    /**
+     * 拖拽弧度的绘制
+     * @param canvas
+     */
     private void drawDrag(Canvas canvas) {
+        //先绘制好 pull_height 高度的区域
         canvas.drawRect(0, 0, mWidth, PULL_HEIGHT, mBackPaint);
 
         mPath.reset();
         mPath.moveTo(0, PULL_HEIGHT);
+        //前两个参数是控制点（比如我们把一条橡皮筋拉直，橡皮筋的头尾部对应起点和终点，然后从拉直的橡皮筋中选择任意一点（除头尾对应的点外）扯动橡皮筋形成的弯曲形状，而那个扯动橡皮筋的点就是控制点）
+        //后两个参数是终点
         mPath.quadTo(mWidthOffset * mWidth, PULL_HEIGHT + (mHeight - PULL_HEIGHT) * 2,
                 mWidth, PULL_HEIGHT);
         canvas.drawPath(mPath, mBackPaint);
@@ -239,6 +254,7 @@ public class AnimationView extends View {
     }
 
     private void drawPopBall(Canvas canvas) {
+        //背景四边形的绘制
         mPath.reset();
         mPath.moveTo(0, 0);
         mPath.lineTo(0, PULL_HEIGHT);
