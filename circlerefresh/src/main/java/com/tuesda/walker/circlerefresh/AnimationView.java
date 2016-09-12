@@ -8,6 +8,7 @@ import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,20 +24,18 @@ public class AnimationView extends View {
     private int PULL_DELTA;
     private float mWidthOffset;
 
-
-
     private AnimatorStatus mAniStatus = AnimatorStatus.PULL_DOWN;
 
     enum AnimatorStatus {
         PULL_DOWN, //下拉到上层view的最大高度
         DRAG_DOWN, //达到最大高度时，继续向下拖拽
-        REL_DRAG, //释放退拽
+        RELEASE_DRAG, //释放拖拽的临界点
         SPRING_UP, // rebound to up, the position is less than PULL_HEIGHT
         POP_BALL,
         OUTER_CIR, //外部的圈
-        REFRESHING,
-        DONE,
-        STOP;
+        REFRESHING, // 刷新状态
+        DONE, //刷新完成
+        STOP; //结束
 
         @Override
         public String toString() {
@@ -45,7 +44,7 @@ public class AnimationView extends View {
                     return "pull down";
                 case DRAG_DOWN:
                     return "drag down";
-                case REL_DRAG:
+                case RELEASE_DRAG:
                     return "release drag";
                 case SPRING_UP:
                     return "spring up";
@@ -102,6 +101,7 @@ public class AnimationView extends View {
         mBallPaint.setColor(0xffffffff);
         mBallPaint.setStyle(Paint.Style.FILL);
 
+        //外部圈
         mOutPaint = new Paint();
         mOutPaint.setAntiAlias(true);
         mOutPaint.setColor(0xffffffff);
@@ -119,44 +119,36 @@ public class AnimationView extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        Log.e(TAG, "onMeasure");
         int height = MeasureSpec.getSize(heightMeasureSpec);
-        //下拉的最大距离 等于 topView的高度 和 允许下拉的高度  100 + 50(PULL_DELTA)
+        /**
+         *   下拉的最大距离 等于 topView的高度 和 允许下拉的高度  100 + 50(PULL_DELTA)
+         *   下拉的最大高度等于 {@link CircleRefreshLayout#mPullHeight}
+         */
         if (height > PULL_DELTA + PULL_HEIGHT) {
             heightMeasureSpec = MeasureSpec.makeMeasureSpec(PULL_DELTA + PULL_HEIGHT, MeasureSpec.getMode(heightMeasureSpec));
         }
+        //最大高度设定
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-    }
 
-    @Override
-    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        super.onLayout(changed, left, top, right, bottom);
-        //主要是动态改变了view在父布局中的大小，根据大小来判断当前的刷新的模式
-        if (changed) {
-            mRadius = getHeight() / 6;
-            mWidth = getWidth();
-            mHeight = getHeight();
+        mRadius = getHeight() / 6;
+        mWidth = getWidth();
+        mHeight = getHeight();
 
-            if (mHeight < PULL_HEIGHT) {
-                mAniStatus = AnimatorStatus.PULL_DOWN;
-            }
-
-
-            switch (mAniStatus) {
-                case PULL_DOWN:
-                    if (mHeight >= PULL_HEIGHT) {
-                        mAniStatus = AnimatorStatus.DRAG_DOWN;
-                    }
-                    break;
-                case REL_DRAG:
-                    break;
-            }
-
+        //高度小于正常的高度 状态变更为下拉
+        if (mHeight < PULL_HEIGHT) {
+            mAniStatus = AnimatorStatus.PULL_DOWN;
         }
-    }
 
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
+        switch (mAniStatus) {
+            case PULL_DOWN:
+                if (mHeight >= PULL_HEIGHT) {
+                    mAniStatus = AnimatorStatus.DRAG_DOWN;
+                }
+                break;
+            case RELEASE_DRAG:
+                break;
+        }
     }
 
     @Override
@@ -166,7 +158,7 @@ public class AnimationView extends View {
             case PULL_DOWN:
                 canvas.drawRect(0, 0, mWidth, mHeight, mBackPaint);
                 break;
-            case REL_DRAG:
+            case RELEASE_DRAG:
             case DRAG_DOWN:
                 drawDrag(canvas);
                 break;
@@ -196,7 +188,7 @@ public class AnimationView extends View {
 
         }
 
-        if (mAniStatus == AnimatorStatus.REL_DRAG) {
+        if (mAniStatus == AnimatorStatus.RELEASE_DRAG) {
             ViewGroup.LayoutParams params = getLayoutParams();
             int height;
             // NOTICE: If the height equals mLastHeight, then the requestLayout() will not work correctly
@@ -205,6 +197,7 @@ public class AnimationView extends View {
             } while (height == mLastHeight && getRelRatio() != 1);
             mLastHeight = height;
             params.height = PULL_HEIGHT + height;
+            //通知重新绘制 onMeasure -> onLayout() -> onDraw
             requestLayout();
         }
 
@@ -213,6 +206,7 @@ public class AnimationView extends View {
 
     /**
      * 拖拽弧度的绘制
+     *
      * @param canvas
      */
     private void drawDrag(Canvas canvas) {
@@ -229,6 +223,7 @@ public class AnimationView extends View {
     }
 
     private void drawSpring(Canvas canvas, int springDelta) {
+
         mPath.reset();
         mPath.moveTo(0, 0);
         mPath.lineTo(0, PULL_HEIGHT);
@@ -407,7 +402,7 @@ public class AnimationView extends View {
     public void releaseDrag() {
         mStart = System.currentTimeMillis();
         mStop = mStart + REL_DRAG_DUR;
-        mAniStatus = AnimatorStatus.REL_DRAG;
+        mAniStatus = AnimatorStatus.RELEASE_DRAG;
         mSpriDeta = mHeight - PULL_HEIGHT;
         requestLayout();
     }

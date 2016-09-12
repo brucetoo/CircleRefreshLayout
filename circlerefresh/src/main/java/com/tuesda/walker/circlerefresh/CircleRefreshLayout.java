@@ -29,7 +29,7 @@ public class CircleRefreshLayout extends FrameLayout {
     private int mHeaderCircleSmaller = 6;
 
 
-    //向下拉得高度 - 150dp
+    //向下拉得高度 - 150dp PULL_HEIGHT + PULL_DELTA
     private float mPullHeight;
     //头部刷新区域高度  100dp
     private float mHeaderHeight;
@@ -98,7 +98,7 @@ public class CircleRefreshLayout extends FrameLayout {
         params.gravity = Gravity.TOP;
         mHeader.setLayoutParams(params);
 
-        //将 header 加到framelayout中
+        //将 header 加到framelayout父布局中
         addViewInternal(mHeader);
         mHeader.setAniBackColor(mHeaderBackColor);
         mHeader.setAniForeColor(mHeaderForeColor);

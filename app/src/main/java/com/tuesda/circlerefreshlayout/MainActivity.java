@@ -1,17 +1,20 @@
 package com.tuesda.circlerefreshlayout;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
-import android.widget.Toast;
 
 import com.tuesda.walker.circlerefresh.CircleRefreshLayout;
+import com.tuesda.walker.circlerefresh.LoadingView;
 
 
 public class MainActivity extends Activity {
@@ -19,6 +22,7 @@ public class MainActivity extends Activity {
     private CircleRefreshLayout mRefreshLayout;
     private ListView mList;
     private Button mStop;
+    private LoadingView loadingView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,6 +32,7 @@ public class MainActivity extends Activity {
         mRefreshLayout = (CircleRefreshLayout) findViewById(R.id.refresh_layout);
         mList = (ListView) findViewById(R.id.list);
         mStop = (Button) findViewById(R.id.stop_refresh);
+        loadingView = (LoadingView) findViewById(R.id.loading_view);
 
         String[] strs = {
             "The",
@@ -53,6 +58,17 @@ public class MainActivity extends Activity {
         mStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if(toggle) {
+                    startDrag();
+                }else {
+                    loadingView.releaseDrag();
+                    loadingView.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            toggle = true;
+                        }
+                    }, 1000);
+                }
                 mRefreshLayout.finishRefreshing();
             }
         });
@@ -70,9 +86,33 @@ public class MainActivity extends Activity {
             }
         });
 
+    }
 
+    private boolean toggle = true;
 
+    private void startDrag() {
+        ValueAnimator animator = ValueAnimator.ofFloat(0, dp2px(80));
 
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                float value = (float) animation.getAnimatedValue();
+//                Log.e("LoadingView", "animatedValue:" + value);
+                loadingView.startDrag(value);
+            }
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                toggle = false;
+            }
+        });
+        animator.setDuration(500);
+        animator.start();
+    }
+
+    private int dp2px(int px) {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, px, getResources().getDisplayMetrics());
     }
 
     @Override
